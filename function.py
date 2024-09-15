@@ -11,3 +11,10 @@ print(product) # print None because function not return any values
 maximum = max (1,2,3,4) #built-in function
 print(maximum)
 
+
+
+def product_of_two_numbers(a,b):
+    product = a * b;
+    return product
+ 
+print(product_of_two_numbers(2,3))  # prints 6
