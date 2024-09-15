@@ -1,0 +1,65 @@
+---
+- name: Post migration tasks
+  gather_facts: yes
+  hosts: all
+  become: yes
+  become_method: su
+  tasks:
+    - name: cleanup 
+      shell: rpm -qa |grep -i cylance |xargs yum remove -y
+      ignore_errors: true
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+    - name: disable  autofs 
+      ansible.builtin.systemd:
+        name: autofs 
+        state: stopped 
+        enabled: no 
+      ignore_errors: true
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+    - name: fixing fstab
+      replace:
+         path: /etc/fstab
+         regexp: '^dev'
+         replace: '#dev'
+      ignore_errors: true
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+
+    - name: create softlink
+      file: 
+         src: /e2open/home 
+         dest: /home
+         state: link
+      ignore_errors: true
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+
+    - name: remove nodejs 
+      command: "{{ item }}"
+      with_items: 
+           -  yum remove nodejs -y
+           -  yum remove kernel-devel -y
+           -  rpm -qa |grep i686|xargs rpm -e
+           -  yum install -y http://repo.almalinux.org/elevate/elevate-release-latest-el7.noarch.rpm
+           -  yum install -y leapp-upgrade  leapp-repository  leapp-data-oraclelinux
+      ignore_errors: true
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+    - name: reboot the server
+      ansible.builtin.reboot:
+        reboot_timeout: 220
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+ 
+    - name: leapp preupgrade 
+      ansible.builtin.command: "leapp preupgrade"
+      ignore_errors: true
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+      
+    - name: leapp answers file 
+
+      command: "{{ item }}"
+      with_items:
+              -  leapp answer --section authselect_check.confirm=True 
+              -  leapp answer --section remove_pam_pkcs11_module_check.confirm=True
+              -  export LEAPP_OVL_SIZE=4096
+              -  leapp preupgrade
+              -  leapp upgrade 
+      when: (ansible_distribution == "CentOS" and ansible_distribution_major_version == "7")
+
