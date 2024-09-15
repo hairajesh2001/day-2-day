@@ -1,0 +1,111 @@
+---
+- name: Post migration tasks
+  gather_facts: yes
+  hosts: all
+  become: yes
+  become_method: su 
+  vars:
+   - ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: python change
+      shell: alternatives --set python /usr/bin/python3
+      ignore_errors: true
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: enable autofs 
+      ansible.builtin.systemd:
+        name: autofs 
+        state: started
+        enabled: yes
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: fixing fstab
+      replace:
+         path: /etc/fstab
+         regexp: '#dev'
+         replace: 'dev'
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+    - name: mounting NFS 
+      shell: mount -a 
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+    - name: fix redhat release 
+      copy: 
+         content: "Red Hat Enterprise Linux Server release 8" 
+         dest: /etc/redhat-release
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+    - name: Copy OEL8
+      copy: src=/etc/ansible/playbooks/rsadmin/oel.repo dest=/etc/yum.repos.d/base.repo owner=root group=root mode=0644 backup=yes
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: Install the subscription-manager
+      shell: yum install -y subscription-manager
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: Install the subscription-manager
+      shell: yum install -y  http://katello.dev.e2open.com/pub/katello-ca-consumer-dev5905.dev.e2open.com-1.0-1.noarch.rpm
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+   
+    - name: Register with activationkey in foreman katello OEL8
+      shell: subscription-manager register --org="Default_Organization" --activationkey="OEL8-key"  --force
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: remove the repo file 
+      file: 
+          path: /etc/yum.repos.d/base.repo
+          state: absent 
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: install python36
+      shell: yum install -y python36 ;alternatives --set python /usr/bin/python3
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+      ignore_errors: true
+    - name: "Configuring docker-ce repo"
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: 0644
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+    - name: " Installing Docker latest version"
+      dnf:
+         name: "*"
+         autoremove: true
+         state: latest
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: cleanup leapp files 
+      shell: dnf remove -y kpatch && rpm -qa |grep leapp |xargs rpm -e && rpm -e elevate-release-1.0-1.el7.noarch && rpm -e nodesource-release-el7-1.noarch 
+      ignore_errors: true
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+     
+    - name: Add NodeJS repo
+      get_url:
+        url: https://dl.yarnpkg.com/rpm/yarn.repo
+        dest: /etc/yum.repos.d/nodejs.repo
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+    - name: Install Dependencies
+      yum: 
+        package: yarn
+        state: present  
+      ignore_errors: true
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+    - name: Install Dependencies
+      shell: curl -sL https://rpm.nodesource.com/setup_16.x | bash -
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+      ignore_errors: true
+    - name: Install Dependencies
+      yum: 
+         package: nodejs 
+         state: present 
+      ignore_errors: true
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: "Configuring cylance repo"
+      get_url:
+        url: http://kickstart/x86_64/cylance/o8/cylance.repo
+        dest: /etc/yum.repos.d/cylance.repo
+        mode: 0644
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
+    - name: install cylance 
+      include_tasks: roles/cylance-install.yaml
+      when: (ansible_distribution == "OracleLinux" and ansible_distribution_major_version == "8")
