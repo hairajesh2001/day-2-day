@@ -1,0 +1,17 @@
+---
+-  hosts: all
+   become: yes
+   become_method: sudo
+   become_flags: '-s'
+   tasks:
+     - name: Run the script
+       shell: echo "Hostname: $(hostname) | Status: $(rpm -qa |grep -i cylance)"
+       register: cylance_status
+       tags: test
+
+     - name: Write the output to a file
+       lineinfile:
+        create: yes
+        path: /tmp/cylance_status.txt
+        line: "{{ cylance_status.stdout_lines[0] }}"
+       delegate_to: localhost
