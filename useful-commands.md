@@ -1,4 +1,4 @@
-usefull commands for kubernetes
+useful commands for kubernetes
 
  kubectl get pods -o custom-columns="POD:metadata.name,NODE:spec.nodeName" | tail -n +2 | while read pod node; do
  echo -n "$pod $node "
